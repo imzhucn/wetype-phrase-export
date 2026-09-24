@@ -13,6 +13,7 @@ import struct
 import json
 import csv
 import argparse
+import time
 
 PROCESS_QUERY_INFORMATION = 0x0400
 PROCESS_VM_READ = 0x0010
@@ -48,6 +49,21 @@ VirtualQueryEx.argtypes = [wintypes.HANDLE, ctypes.c_void_p, ctypes.POINTER(MEMO
 ReadProcessMemory = kernel32.ReadProcessMemory
 ReadProcessMemory.restype = wintypes.BOOL
 ReadProcessMemory.argtypes = [wintypes.HANDLE, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_size_t)]
+
+def restart_wetype():
+    """
+    重启微信输入法进程以彻底清理历史内存残留。
+    后台系统服务 WeType Management Service 会在 2 秒内自动重新拉起干净的输入法核心。
+    """
+    import subprocess
+    print("[*] 正在刷新重启微信输入法以彻底清理历史内存缓存...")
+    try:
+        subprocess.run('taskkill /F /T /IM wetype_server.exe /IM wetype_renderer.exe /IM wetype_update.exe',
+                       shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        time.sleep(2.5)
+        print("[+] 微信输入法已成功自动重启，已重新拉取云端纯净数据。")
+    except Exception as e:
+        print(f"[!] 自动重启输入法异常: {e}")
 
 def get_wetype_pids():
     """获取所有运行中的微信输入法核心进程 PID"""
@@ -115,8 +131,11 @@ def extract_from_buffer(buf):
             })
     return items
 
-def export_wetype_phrases(output_dir=None):
+def export_wetype_phrases(output_dir=None, do_restart=False):
     """主执行逻辑：扫描进程、解码数据并导出多格式文件"""
+    if do_restart:
+        restart_wetype()
+
     if not output_dir:
         # 默认保存到当前脚本所在目录下的 result/
         script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -212,14 +231,18 @@ def export_wetype_phrases(output_dir=None):
         if len(text_display) > 50:
             text_display = text_display[:50] + "..."
         print(f"  {idx}. {key_display:<10} => {text_display}")
+    
+    print("\n[提示] 若在输入法界面刚删除了词条，由于进程历史堆内存可能残留旧缓冲区碎片，")
+    print("       可使用 'uv run python main.py -r' 自动重启刷新输入法后再提取。")
     print("=" * 60)
     return True
 
 def main():
     parser = argparse.ArgumentParser(description="微信输入法常用语一键导出工具")
     parser.add_argument("-o", "--output", help="指定导出目录 (默认 ./result)", default=None)
+    parser.add_argument("-r", "--restart", help="导出前自动重启刷新微信输入法以清空历史内存缓存", action="store_true")
     args = parser.parse_args()
-    success = export_wetype_phrases(output_dir=args.output)
+    success = export_wetype_phrases(output_dir=args.output, do_restart=args.restart)
     if not success:
         sys.exit(1)
 
