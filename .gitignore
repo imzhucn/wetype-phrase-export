@@ -1,0 +1,17 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info/
+
+# Virtual environments
+.venv/
+
+# Export results & Privacy sensitive data (严禁提交个人常用语与敏感数据)
+result/
+dump_*
+*.bin
+*.log
+*.tmp
