@@ -131,7 +131,7 @@ def extract_from_buffer(buf):
             })
     return items
 
-def export_wetype_phrases(output_dir=None, do_restart=False):
+def export_wetype_phrases(output_dir="./", do_restart=False):
     """主执行逻辑：扫描进程、解码数据并导出多格式文件"""
     if do_restart:
         restart_wetype()
